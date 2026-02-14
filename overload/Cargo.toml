@@ -1,0 +1,21 @@
+[package]
+name = "overload"
+version = "0.1.0"
+edition = "2021"
+
+[profile.release]
+strip = true  
+
+[dependencies]
+dyncvoke_core = { path = "../dyncvoke_core" }
+data = { path = "../data" }
+manualmap = { path = "../manualmap" }
+litcrypt2 = "=0.1.2"
+winproc = "0.6.4"
+nanorand = "0.7.0"
+
+[dependencies.windows-sys]
+version = "0.59"
+features = [
+    "Win32_Foundation"
+]

@@ -1,0 +1,22 @@
+[package]
+name = "dmanager"
+version = "0.1.0"
+edition = "2021"
+
+[profile.release]
+opt-level = 'z'     # Optimize for size.
+strip = true  
+
+[dependencies]
+nanorand = "0.7.0"
+manualmap = { path = "../manualmap" }
+overload = { path = "../overload" }
+data = { path = "../data" }
+litcrypt2 = "=0.1.2"
+dyncvoke_core = { path = "../dyncvoke_core" }
+
+[dependencies.windows-sys]
+version = "0.59"
+features = [
+    "Win32_Foundation"
+]

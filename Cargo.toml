@@ -1,0 +1,37 @@
+[package]
+name = "dyncvoke"
+version = "0.1.0"
+edition = "2021"
+description = "Dynamically invoke arbitrary unmanaged code"
+license = "MIT OR Apache-2.0" 
+repository = "https://github.com/Whitecat18/Dyncvoke"
+homepage = "https://github.com/Whitecat18/Dyncvoke"
+documentation = "README.md"
+readme = "README.md"
+keywords = ["windows_sys", "dynamic", "redteam"]
+categories = ["command-line-utilities"]
+authors = ["5mukx"]
+
+[lib]
+name = "dyncvoke"
+path = "src/lib.rs"
+
+[profile.dev]
+debug-assertions = false
+
+[profile.release]
+debug-assertions = false
+strip = true
+lto = false
+
+[features]
+syscall = ["dyncvoke_core/syscall"]
+
+[dependencies]
+dyncvoke_core = { path = "dyncvoke_core"}
+manualmap = { path = "manualmap" }
+data = { path = "data" }
+overload = { path = "overload" }
+dmanager = { path = "dmanager" }
+
+[build-dependencies]
