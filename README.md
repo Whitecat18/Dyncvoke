@@ -1,4 +1,4 @@
-# dincvoke_rs
+# dyncvoke_rs
 
 A powerful Rust library for dynamic Windows API invocation, PE manipulation, and advanced red team operations. dincvoke_rs provides comprehensive capabilities for bypassing EDR hooks, executing indirect syscalls, manual PE mapping, memory section overloading, and more.
 
@@ -32,23 +32,19 @@ dincvoke_rs consists of multiple specialized crates:
 
 ## Installation
 
-Add via crates
-
-cargo add dincvoke
-
 ```toml
 [dependencies]
-dyncvoke = "0.1.0"
+dyncvoke = { git = "https://github.com/Whitecat18/Dyncvoke" }
 ```
 
-Add dincvoke_rs to your `Cargo.toml`:
+OR Add dincvoke_rs to your `Cargo.toml` locally:
 
 ```toml
 [dependencies]
 dincvoke_rs = { path = "path/to/dincvoke_rs" }
 ```
 
-Or for the core library only:
+for the core library only (Local):
 
 ```toml
 [dependencies]
@@ -229,7 +225,8 @@ fn main() {
 
 ## License
 
-MIT 
+[MIT LICENSE](./LICENSE)
+ 
 ## Credits & Resources...
 
 The project was inspired by [DInvoke_rs](https://github.com/Kudaes/DInvoke_rs/tree/main) by [Kudaes](https://x.com/_Kudaes_) that was built using windows crate...
