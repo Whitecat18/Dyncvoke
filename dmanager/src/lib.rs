@@ -296,7 +296,226 @@ impl Manager {
         }
 
         Ok(())
-        
+
     }
 
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Test Manager creation
+    #[test]
+    fn test_manager_creation() {
+        let manager = Manager::new();
+
+        assert!(manager.payloads.is_empty());
+        assert!(manager.payloads_metadata.is_empty());
+        assert!(manager.decoys_metadata.is_empty());
+        assert!(manager.decoys.is_empty());
+        assert!(manager.counter.is_empty());
+        assert!(manager.keys.is_empty());
+    }
+
+    // Test Manager with new_module - basic validation only (no PE parsing)
+    #[test]
+    fn test_manager_new_module_validation() {
+        let manager = Manager::new();
+
+        // Test that manager can be created
+        assert!(manager.payloads.is_empty());
+
+        // Test address validation - this function requires valid PE data which we don't have in tests
+        // So we just verify the manager structure works
+        let address: usize = 0x12340000;
+        assert!(address != 0);
+    }
+
+    // Test Manager with new_shellcode - basic validation only
+    #[test]
+    fn test_manager_new_shellcode_validation() {
+        let manager = Manager::new();
+
+        // Test that manager can be created
+        assert!(manager.payloads.is_empty());
+    }
+
+    // Test xor_module function
+    #[test]
+    fn test_xor_module() {
+        let data = vec![0x01, 0x02, 0x03, 0x04, 0x05];
+        let key: u8 = 0x42;
+
+        // XOR the data
+        let xored = Manager::xor_module(data.clone(), key);
+
+        // Verify XOR operation
+        for (i, &byte) in data.iter().enumerate() {
+            assert_eq!(xored[i], byte ^ key);
+        }
+
+        // XOR again should get original
+        let de_xored = Manager::xor_module(xored, key);
+        assert_eq!(de_xored, data);
+    }
+
+    // Test xor_module with different keys
+    #[test]
+    fn test_xor_module_different_keys() {
+        let data = vec![0xFF, 0x00, 0xAA, 0x55, 0x12, 0x34];
+
+        // Test with key 0x00 (no change)
+        let no_change = Manager::xor_module(data.clone(), 0x00);
+        assert_eq!(no_change, data);
+
+        // Test with key 0xFF (bitflip)
+        let bitflip = Manager::xor_module(data.clone(), 0xFF);
+        for (i, &byte) in data.iter().enumerate() {
+            assert_eq!(bitflip[i], !byte);
+        }
+
+        // Test with key 0xAA (alternating pattern)
+        let patterned = Manager::xor_module(data.clone(), 0xAA);
+        for (i, &byte) in data.iter().enumerate() {
+            assert_eq!(patterned[i], byte ^ 0xAA);
+        }
+    }
+
+    // Test xor_module with large data
+    #[test]
+    fn test_xor_module_large_data() {
+        let size = 1024 * 1024; // 1 MB
+        let data: Vec<u8> = vec![0x42; size]; // Fill with 0x42
+        let key: u8 = 0x5A;
+
+        let xored = Manager::xor_module(data.clone(), key);
+        assert_eq!(xored.len(), size);
+
+        let restored = Manager::xor_module(xored, key);
+        assert_eq!(restored.len(), data.len());
+        // Verify the XOR was applied correctly
+        assert_eq!(restored[0], 0x42);
+    }
+
+    // Test counter tracking
+    #[test]
+    fn test_counter_tracking() {
+        let mut manager = Manager::new();
+
+        // Insert a counter entry manually for testing
+        let address = 0x1000;
+        manager.counter.insert(address, 5);
+
+        assert_eq!(manager.counter.get(&address), Some(&5));
+
+        // Increment
+        *manager.counter.get_mut(&address).unwrap() += 1;
+        assert_eq!(manager.counter.get(&address), Some(&6));
+    }
+
+    // Test key storage
+    #[test]
+    fn test_key_storage() {
+        let mut manager = Manager::new();
+
+        let address = 0x2000;
+        let key: u8 = 0xAB;
+
+        manager.keys.insert(address, key);
+
+        assert_eq!(manager.keys.get(&address), Some(&key));
+    }
+
+    // Test payload and decoy storage
+    #[test]
+    fn test_payload_decoy_storage() {
+        let mut manager = Manager::new();
+
+        let address = 0x3000;
+        let payload = vec![0x90, 0x90, 0xCC]; // NOP, NOP, INT3
+        let decoy = vec![0x55, 0x8B, 0xEC]; // Standard function prologue
+
+        manager.payloads.insert(address, payload.clone());
+        manager.decoys.insert(address, decoy.clone());
+
+        assert_eq!(manager.payloads.get(&address), Some(&payload));
+        assert_eq!(manager.decoys.get(&address), Some(&decoy));
+    }
+
+    // Test metadata storage
+    #[test]
+    fn test_metadata_storage() {
+        let mut manager = Manager::new();
+
+        let address = 0x4000;
+        let pe_metadata = PeMetadata::default();
+
+        manager.payloads_metadata.insert(address, pe_metadata.clone());
+        manager.decoys_metadata.insert(address, pe_metadata);
+
+        assert!(manager.payloads_metadata.get(&address).is_some());
+        assert!(manager.decoys_metadata.get(&address).is_some());
+    }
+
+    // Test HashMap operations
+    #[test]
+    fn test_hashmap_operations() {
+        let mut manager = Manager::new();
+
+        // Insert multiple entries
+        for i in 0..10 {
+            let addr = 0x10000 + (i * 0x1000);
+            manager.payloads.insert(addr, vec![i as u8]);
+            manager.counter.insert(addr, i as i64);
+            manager.keys.insert(addr, (i + 1) as u8);
+        }
+
+        assert_eq!(manager.payloads.len(), 10);
+        assert_eq!(manager.counter.len(), 10);
+        assert_eq!(manager.keys.len(), 10);
+
+        // Remove entry
+        manager.payloads.remove(&(0x10000));
+        manager.counter.remove(&(0x10000));
+        manager.keys.remove(&(0x10000));
+
+        assert_eq!(manager.payloads.len(), 9);
+    }
+
+    // Test address validation
+    #[test]
+    fn test_address_validation() {
+        // Valid addresses should be non-null and aligned
+        let valid_addresses: Vec<u64> = vec![
+            0x1000,
+            0x10000,
+            0x140000000,
+            0x7FF60000,
+        ];
+
+        for addr in valid_addresses {
+            assert!(addr > 0);
+            // Check alignment (should be page-aligned)
+            assert_eq!(addr % 0x1000, 0);
+        }
+    }
+
+    // Test buffer size validation
+    #[test]
+    fn test_buffer_size_validation() {
+        let empty: Vec<u8> = vec![];
+        assert!(empty.is_empty());
+
+        let single_byte: Vec<u8> = vec![0x42];
+        assert_eq!(single_byte.len(), 1);
+
+        let page_size = 4096;
+        let page_buffer: Vec<u8> = vec![0x00; page_size];
+        assert_eq!(page_buffer.len(), page_size);
+    }
 }

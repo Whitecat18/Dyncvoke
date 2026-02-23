@@ -20,6 +20,7 @@ pub type HINSTANCE = *mut c_void;
 // Define UNICODE_STRING manually (not available directly in windows-sys)
 #[repr(C)]
 #[allow(non_snake_case)]
+#[derive(Default)]
 pub struct UNICODE_STRING {
     pub Length: u16,
     pub MaximumLength: u16,
@@ -60,7 +61,7 @@ pub type EntryPoint = extern "system" fn (HINSTANCE, u32, *mut c_void) -> BOOL;
 pub type QueryInterface = unsafe extern "system" fn (*mut c_void, *const GUID, *mut *mut c_void) -> u32;
 pub type AddRef = unsafe extern "system" fn(*mut c_void) -> u32;
 pub type Release = unsafe extern "system" fn(*mut c_void) -> u32;
-pub type ImpersonateLoggedOnUser = unsafe extern "system" fn (HANDLE) -> bool; 
+pub type ImpersonateLoggedOnUser = unsafe extern "system" fn (HANDLE) -> bool;
 pub type RevertToSelf = unsafe extern "system" fn () -> bool;
 pub type LoadLibraryA = unsafe extern "system" fn (*mut u8) -> usize;
 pub type FreeLibrary = unsafe extern "system" fn (isize) -> HINSTANCE;
@@ -86,7 +87,7 @@ pub type MiniDumpWriteDump = unsafe extern "system" fn (HANDLE, u32, HANDLE, u32
 pub type GetOverlappedResult = unsafe extern "system" fn (HANDLE, *mut OVERLAPPED, *mut u32, bool) -> BOOL;
 pub type CreateFileA = unsafe extern "system" fn (*mut u8, u32, u32, *const SECURITY_ATTRIBUTES, u32, u32, HANDLE) -> HANDLE;
 pub type CreateFileW = unsafe extern "system" fn (*const u16, u32, u32, *const SECURITY_ATTRIBUTES, u32, u32, HANDLE) -> HANDLE;
-pub type ReadFile = unsafe extern "system" fn (HANDLE, PVOID, u32, *mut u32, *mut OVERLAPPED) -> i32; 
+pub type ReadFile = unsafe extern "system" fn (HANDLE, PVOID, u32, *mut u32, *mut OVERLAPPED) -> i32;
 pub type CreateTransaction = unsafe extern "system" fn (*mut SECURITY_ATTRIBUTES, *mut GUID, u32, u32, u32, u32, *mut u16) -> HANDLE;
 pub type CreateFileTransactedA = unsafe extern "system" fn (*mut u8, u32, u32, *const SECURITY_ATTRIBUTES, u32, u32, HANDLE,
     HANDLE, *const u32, PVOID) -> HANDLE;
@@ -110,7 +111,7 @@ pub type GetModuleHandleExA = unsafe extern "system" fn (i32,*const u8,*mut usiz
 pub type GetModuleBaseNameW = unsafe extern "system" fn (HANDLE, usize, *mut u16, u32) -> u32;
 pub type GetModuleFileNameExW = unsafe extern "system" fn (HANDLE, usize, *mut u16, u32) -> u32;
 pub type GetSystemInfo = unsafe extern "system" fn (*mut SYSTEM_INFO);
-pub type VirtualQueryEx = unsafe extern "system" fn (HANDLE, *const c_void, *mut MEMORY_BASIC_INFORMATION, usize) -> usize; 
+pub type VirtualQueryEx = unsafe extern "system" fn (HANDLE, *const c_void, *mut MEMORY_BASIC_INFORMATION, usize) -> usize;
 pub type LptopLevelExceptionFilter = usize;
 pub type AddVectoredExceptionHandler = unsafe extern "system" fn (first: u32, handle: usize) -> PVOID;
 pub type SetUnhandledExceptionFilter = unsafe extern "system" fn (filter: LptopLevelExceptionFilter) -> LptopLevelExceptionFilter;
@@ -163,9 +164,9 @@ pub const ADD_RSP: u32 = 1489273672;// add rsp,0x58 -> up to 11 parameters
 
 pub const TLS_OUT_OF_INDEXES: u32 = 0xFFFFFFFF;
 
-pub const UNW_FLAG_EHANDLER: u8 = 0x1; 
-pub const UNW_FLAG_UHANDLER: u8 = 0x2; 
-pub const UNW_FLAG_CHAININFO: u8 = 0x4; 
+pub const UNW_FLAG_EHANDLER: u8 = 0x1;
+pub const UNW_FLAG_UHANDLER: u8 = 0x2;
+pub const UNW_FLAG_CHAININFO: u8 = 0x4;
 
 // COFF Relocation constants
 pub const IMAGE_REL_AMD64_ABSOLUTE: u16 = 0x0000;
@@ -241,7 +242,7 @@ pub struct PeMetadata {
     pub image_file_header: ImageFileHeader,
     pub opt_header_32: IMAGE_OPTIONAL_HEADER32,
     pub opt_header_64: ImageOptionalHeader64,
-    pub sections: Vec<IMAGE_SECTION_HEADER> 
+    pub sections: Vec<IMAGE_SECTION_HEADER>
 }
 
 impl Default for PeMetadata {
@@ -276,7 +277,7 @@ impl Default for CoffMetadata {
             image_file_header: ImageFileHeader::default(),
             sections: Vec::default(),
             sections_order: BTreeMap::default(),
-            sections_mapped_addresses: BTreeMap::default(),   
+            sections_mapped_addresses: BTreeMap::default(),
             symbols: Vec::default(),
             imports: BTreeMap::default()
         }
@@ -292,7 +293,7 @@ pub struct AuxSymbolEntry {
 impl Default for AuxSymbolEntry {
     fn default() -> AuxSymbolEntry {
         AuxSymbolEntry {
-            aux_symbol_entry: [0u8;18]  
+            aux_symbol_entry: [0u8;18]
         }
     }
 }
@@ -320,7 +321,7 @@ impl Default for CoffSymbol {
             symbol_type: u16::default(),
             storage_class: u8::default(),
             aux_symbols: u8::default(),
-            aux_symbol_entries: Vec::default()  
+            aux_symbol_entries: Vec::default()
         }
     }
 }
@@ -376,36 +377,36 @@ pub struct ImageFileHeader {
 #[derive(Copy, Clone)]
 #[repr(C)] // required to keep fields order, otherwise Rust may change that order randomly
 pub struct ImageOptionalHeader64 {
-        pub magic: u16, 
-        pub major_linker_version: u8, 
-        pub minor_linker_version: u8, 
-        pub size_of_code: u32, 
-        pub size_of_initialized_data: u32, 
-        pub size_of_unitialized_data: u32, 
-        pub address_of_entry_point: u32, 
-        pub base_of_code: u32, 
-        pub image_base: u64, 
-        pub section_alignment: u32, 
-        pub file_alignment: u32, 
-        pub major_operating_system_version: u16, 
-        pub minor_operating_system_version: u16, 
+        pub magic: u16,
+        pub major_linker_version: u8,
+        pub minor_linker_version: u8,
+        pub size_of_code: u32,
+        pub size_of_initialized_data: u32,
+        pub size_of_unitialized_data: u32,
+        pub address_of_entry_point: u32,
+        pub base_of_code: u32,
+        pub image_base: u64,
+        pub section_alignment: u32,
+        pub file_alignment: u32,
+        pub major_operating_system_version: u16,
+        pub minor_operating_system_version: u16,
         pub major_image_version: u16,
-        pub minor_image_version: u16, 
+        pub minor_image_version: u16,
         pub major_subsystem_version: u16,
-        pub minor_subsystem_version: u16, 
-        pub win32_version_value: u32, 
-        pub size_of_image: u32, 
-        pub size_of_headers: u32, 
-        pub checksum: u32, 
-        pub subsystem: u16, 
-        pub dll_characteristics: u16, 
-        pub size_of_stack_reserve: u64, 
-        pub size_of_stack_commit: u64, 
-        pub size_of_heap_reserve: u64, 
-        pub size_of_heap_commit: u64, 
-        pub loader_flags: u32, 
-        pub number_of_rva_and_sizes: u32, 
-        pub datas_directory: [IMAGE_DATA_DIRECTORY; 16], 
+        pub minor_subsystem_version: u16,
+        pub win32_version_value: u32,
+        pub size_of_image: u32,
+        pub size_of_headers: u32,
+        pub checksum: u32,
+        pub subsystem: u16,
+        pub dll_characteristics: u16,
+        pub size_of_stack_reserve: u64,
+        pub size_of_stack_commit: u64,
+        pub size_of_heap_reserve: u64,
+        pub size_of_heap_commit: u64,
+        pub loader_flags: u32,
+        pub number_of_rva_and_sizes: u32,
+        pub datas_directory: [IMAGE_DATA_DIRECTORY; 16],
 }
 
 #[derive(Copy, Clone, Default, PartialEq, Debug, Eq)]
@@ -450,39 +451,39 @@ impl Default for ClientId {
 
 pub struct NtAllocateVirtualMemoryArgs
 {
-    pub handle: HANDLE, 
+    pub handle: HANDLE,
     pub base_address: *mut PVOID
 }
 
 pub struct NtOpenProcessArgs
 {
-   pub handle: *mut HANDLE, 
-   pub access: u32, 
-   pub attributes: *mut OBJECT_ATTRIBUTES, 
+   pub handle: *mut HANDLE,
+   pub access: u32,
+   pub attributes: *mut OBJECT_ATTRIBUTES,
    pub client_id: *mut ClientId
 }
 
 pub struct NtProtectVirtualMemoryArgs
 {
-    pub handle: HANDLE, 
+    pub handle: HANDLE,
     pub base_address: *mut PVOID,
-    pub size: *mut usize, 
+    pub size: *mut usize,
     pub protection: u32
 }
 
 pub struct NtWriteVirtualMemoryArgs
 {
-    pub handle: HANDLE, 
-    pub base_address: PVOID, 
-    pub buffer: PVOID, 
+    pub handle: HANDLE,
+    pub base_address: PVOID,
+    pub buffer: PVOID,
     pub size: usize
 }
 
 pub struct NtCreateThreadExArgs
 {
-    pub thread: *mut HANDLE, 
-    pub access: u32, 
-    pub attributes: *mut OBJECT_ATTRIBUTES, 
+    pub thread: *mut HANDLE,
+    pub access: u32,
+    pub attributes: *mut OBJECT_ATTRIBUTES,
     pub process: HANDLE
 }
 
@@ -542,52 +543,52 @@ impl Default for CONTEXT
 {
     fn default() -> CONTEXT {
         CONTEXT {
-            P1Home: 0, 
-            P2Home: 0, 
-            P3Home: 0, 
-            P4Home: 0, 
-            P5Home: 0, 
-            P6Home: 0, 
-            ContextFlags: 0, 
-            MxCsr: 0, 
-            SegCs: 0, 
-            SegDs: 0, 
-            SegEs: 0, 
-            SegFs: 0, 
-            SegGs: 0, 
-            SegSs: 0, 
-            EFlags: 0, 
-            Dr0: 0, 
-            Dr1: 0, 
-            Dr2: 0, 
-            Dr3: 0, 
-            Dr6: 0, 
-            Dr7: 0, 
-            Rax: 0, 
-            Rcx: 0, 
-            Rdx: 0, 
-            Rbx: 0, 
-            Rsp: 0, 
-            Rbp: 0, 
-            Rsi: 0, 
-            Rdi: 0, 
-            R8: 0, 
-            R9: 0, 
-            R10: 0, 
-            R11: 0, 
-            R12: 0, 
-            R13: 0, 
-            R14: 0, 
-            R15: 0, 
-            Rip: 0, 
-            Anonymous: [0;4096], 
-            VectorRegister: [0; 128*26], 
-            VectorControl: 0, 
-            DebugControl: 0, 
-            LastBranchToRip: 0, 
-            LastBranchFromRip: 0, 
-            LastExceptionToRip: 0, 
-            LastExceptionFromRip: 0 
+            P1Home: 0,
+            P2Home: 0,
+            P3Home: 0,
+            P4Home: 0,
+            P5Home: 0,
+            P6Home: 0,
+            ContextFlags: 0,
+            MxCsr: 0,
+            SegCs: 0,
+            SegDs: 0,
+            SegEs: 0,
+            SegFs: 0,
+            SegGs: 0,
+            SegSs: 0,
+            EFlags: 0,
+            Dr0: 0,
+            Dr1: 0,
+            Dr2: 0,
+            Dr3: 0,
+            Dr6: 0,
+            Dr7: 0,
+            Rax: 0,
+            Rcx: 0,
+            Rdx: 0,
+            Rbx: 0,
+            Rsp: 0,
+            Rbp: 0,
+            Rsi: 0,
+            Rdi: 0,
+            R8: 0,
+            R9: 0,
+            R10: 0,
+            R11: 0,
+            R12: 0,
+            R13: 0,
+            R14: 0,
+            R15: 0,
+            Rip: 0,
+            Anonymous: [0;4096],
+            VectorRegister: [0; 128*26],
+            VectorControl: 0,
+            DebugControl: 0,
+            LastBranchToRip: 0,
+            LastBranchFromRip: 0,
+            LastExceptionToRip: 0,
+            LastExceptionFromRip: 0
         }
     }
 }
@@ -697,4 +698,253 @@ pub struct ThreadBasicInformation {
     pub priority: i32,
     pub base_priority: i32,
 
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Test UNICODE_STRING structure
+    #[test]
+    fn test_unicode_string_default() {
+        let us = UNICODE_STRING::default();
+        assert_eq!(us.Length, 0);
+        assert_eq!(us.MaximumLength, 0);
+        assert!(us.Buffer.is_null());
+    }
+
+    #[test]
+    fn test_unicode_string_creation() {
+        let us = UNICODE_STRING {
+            Length: 10,
+            MaximumLength: 12,
+            Buffer: std::ptr::null_mut(),
+        };
+        assert_eq!(us.Length, 10);
+        assert_eq!(us.MaximumLength, 12);
+    }
+
+    // Test OBJECT_ATTRIBUTES structure
+    #[test]
+    fn test_object_attributes_default() {
+        let oa = OBJECT_ATTRIBUTES::default();
+        assert_eq!(oa.Length, 0);
+        assert!(oa.RootDirectory.is_null());
+        assert!(oa.ObjectName.is_null());
+        assert_eq!(oa.Attributes, 0);
+    }
+
+    // Test LARGE_INTEGER structure
+    #[test]
+    fn test_large_integer_default() {
+        let li = LARGE_INTEGER::default();
+        assert_eq!(li.QuadPart, 0);
+    }
+
+    #[test]
+    fn test_large_integer_creation() {
+        let li = LARGE_INTEGER { QuadPart: 12345 };
+        assert_eq!(li.QuadPart, 12345);
+    }
+
+    // Test constants exist and have expected values
+    #[test]
+    fn test_dll_constants() {
+        assert_eq!(DLL_PROCESS_DETACH, 0);
+        assert_eq!(DLL_PROCESS_ATTACH, 1);
+        assert_eq!(DLL_THREAD_ATTACH, 2);
+        assert_eq!(DLL_THREAD_DETACH, 3);
+    }
+
+    #[test]
+    fn test_page_constants() {
+        assert_eq!(PAGE_NOACCESS, 0x1);
+        assert_eq!(PAGE_READONLY, 0x2);
+        assert_eq!(PAGE_READWRITE, 0x4);
+        assert_eq!(PAGE_WRITECOPY, 0x8);
+        assert_eq!(PAGE_EXECUTE, 0x10);
+        assert_eq!(PAGE_EXECUTE_READ, 0x20);
+        assert_eq!(PAGE_EXECUTE_READWRITE, 0x40);
+        assert_eq!(PAGE_EXECUTE_WRITECOPY, 0x80);
+    }
+
+    #[test]
+    fn test_memory_constants() {
+        assert_eq!(MEM_COMMIT, 0x1000);
+        assert_eq!(MEM_RESERVE, 0x2000);
+    }
+
+    #[test]
+    fn test_section_constants() {
+        assert_eq!(SECTION_MEM_READ, 0x40000000);
+        assert_eq!(SECTION_MEM_WRITE, 0x80000000);
+        assert_eq!(SECTION_MEM_EXECUTE, 0x20000000);
+    }
+
+    #[test]
+    fn test_access_constants() {
+        assert_eq!(GENERIC_READ, 0x80000000);
+        assert_eq!(GENERIC_WRITE, 0x40000000);
+        assert_eq!(GENERIC_EXECUTE, 0x20000000);
+        assert_eq!(GENERIC_ALL, 0x10000000);
+    }
+
+    #[test]
+    fn test_file_share_constants() {
+        assert_eq!(FILE_SHARE_NONE, 0x0);
+        assert_eq!(FILE_SHARE_READ, 0x1);
+        assert_eq!(FILE_SHARE_WRITE, 0x2);
+        assert_eq!(FILE_SHARE_DELETE, 0x4);
+    }
+
+    #[test]
+    fn test_file_access_constants() {
+        assert_eq!(DELETE, 0x10000);
+        assert_eq!(FILE_READ_DATA, 0x1);
+        assert_eq!(FILE_READ_ATTRIBUTES, 0x80);
+        assert_eq!(FILE_READ_EA, 0x8);
+        assert_eq!(READ_CONTROL, 0x20000);
+        assert_eq!(FILE_WRITE_DATA, 0x2);
+        assert_eq!(FILE_WRITE_ATTRIBUTES, 0x100);
+        assert_eq!(FILE_WRITE_EA, 0x10);
+        assert_eq!(FILE_APPEND_DATA, 0x4);
+    }
+
+    #[test]
+    fn test_file_open_constants() {
+        assert_eq!(FILE_SYNCHRONOUS_IO_NONALERT, 0x20);
+        assert_eq!(FILE_NON_DIRECTORY_FILE, 0x40);
+    }
+
+    #[test]
+    fn test_other_constants() {
+        assert_eq!(SEC_IMAGE, 0x1000000);
+        assert_eq!(MAX_PATH, 260);
+        assert_eq!(TLS_OUT_OF_INDEXES, 0xFFFFFFFF);
+    }
+
+    #[test]
+    fn test_unw_flags() {
+        assert_eq!(UNW_FLAG_EHANDLER, 0x1);
+        assert_eq!(UNW_FLAG_UHANDLER, 0x2);
+        assert_eq!(UNW_FLAG_CHAININFO, 0x4);
+    }
+
+    #[test]
+    fn test_coff_relocation_constants() {
+        assert_eq!(IMAGE_REL_AMD64_ABSOLUTE, 0x0000);
+        assert_eq!(IMAGE_REL_AMD64_ADDR64, 0x0001);
+        assert_eq!(IMAGE_REL_AMD64_ADDR32, 0x0002);
+        assert_eq!(IMAGE_REL_AMD64_ADDR32NB, 0x0003);
+        assert_eq!(IMAGE_REL_AMD64_REL32, 0x0004);
+    }
+
+    // Test PeMetadata default
+    #[test]
+    fn test_pe_metadata_default() {
+        let pe = PeMetadata::default();
+        assert_eq!(pe.pe, 0);
+        assert!(!pe.is_32_bit);
+    }
+
+    // Test CoffMetadata default
+    #[test]
+    fn test_coff_metadata_default() {
+        let coff = CoffMetadata::default();
+        assert_eq!(coff.image_file_header.machine, 0);
+        assert!(coff.sections.is_empty());
+        assert!(coff.imports.is_empty());
+    }
+
+    // Test ImageFileHeader default
+    #[test]
+    fn test_image_file_header_default() {
+        let header = ImageFileHeader::default();
+        assert_eq!(header.machine, 0);
+        assert_eq!(header.number_of_sections, 0);
+        assert_eq!(header.time_data_stamp, 0);
+    }
+
+    // Test ClientId default
+    #[test]
+    fn test_client_id_default() {
+        let cid = ClientId::default();
+        assert!(cid.unique_process.is_null());
+        assert!(cid.unique_thread.is_null());
+    }
+
+    // Test ApiSetNamespace default
+    #[test]
+    fn test_api_set_namespace_default() {
+        let ns = ApiSetNamespace::default();
+        assert_eq!(ns.count, 0);
+        assert_eq!(ns.entry_offset, 0);
+    }
+
+    // Test ApiSetNamespaceEntry default
+    #[test]
+    fn test_api_set_namespace_entry_default() {
+        let entry = ApiSetNamespaceEntry::default();
+        assert_eq!(entry.name_offset, 0);
+        assert_eq!(entry.name_length, 0);
+        assert_eq!(entry.value_offset, 0);
+        assert_eq!(entry.value_length, 0);
+    }
+
+    // Test ApiSetValueEntry default
+    #[test]
+    fn test_api_set_value_entry_default() {
+        let entry = ApiSetValueEntry::default();
+        assert_eq!(entry.flags, 0);
+        assert_eq!(entry.name_offset, 0);
+        assert_eq!(entry.name_count, 0);
+        assert_eq!(entry.value_offset, 0);
+        assert_eq!(entry.value_count, 0);
+    }
+
+    // Test CONTEXT default
+    #[test]
+    fn test_context_default() {
+        let ctx = CONTEXT::default();
+        assert_eq!(ctx.P1Home, 0);
+        assert_eq!(ctx.Rax, 0);
+        assert_eq!(ctx.Rsp, 0);
+        assert_eq!(ctx.Rip, 0);
+    }
+
+    // Test GUID default
+    #[test]
+    fn test_guid_default() {
+        let guid = GUID::default();
+        assert_eq!(guid.data1, 0);
+        assert_eq!(guid.data2, 0);
+        assert_eq!(guid.data3, 0);
+    }
+
+    // Test RuntimeFunction default
+    #[test]
+    fn test_runtime_function_default() {
+        let rf = RuntimeFunction::default();
+        assert_eq!(rf.begin_addr, 0);
+        assert_eq!(rf.end_addr, 0);
+        assert_eq!(rf.unwind_addr, 0);
+    }
+
+    // Test HANDLE type
+    #[test]
+    fn test_handle_type() {
+        let null_handle: HANDLE = std::ptr::null_mut();
+        assert!(null_handle.is_null());
+    }
+
+    // Test HINSTANCE type
+    #[test]
+    fn test_hinstance_type() {
+        let null_hinstance: HINSTANCE = std::ptr::null_mut();
+        assert!(null_hinstance.is_null());
+    }
 }

@@ -12,7 +12,7 @@ data = { path = "../data" }
 manualmap = { path = "../manualmap" }
 litcrypt2 = "=0.1.2"
 winproc = "0.6.4"
-nanorand = "0.7.0"
+nanorand = "0.8.0"
 
 [dependencies.windows-sys]
 version = "0.59"

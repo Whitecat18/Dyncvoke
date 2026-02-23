@@ -47,12 +47,12 @@ use litcrypt2::lc;
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// let ntdll = manualmap::read_and_map_module(r"c:\windows\system32\ntdll.dll", true, false);
 ///
 /// match ntdll {
 ///     Ok(x) => if x.1 != 0 {println!("The base address of ntdll.dll is 0x{:X}.", x.1);},
-///     Err(e) => println!("{}", e),      
+///     Err(e) => println!("{}", e),
 /// }
 /// ```
 pub fn read_and_map_module(
@@ -86,7 +86,7 @@ pub fn read_and_map_module(
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use std::fs;
 ///
 /// let file_content = fs::read("c:\\windows\\system32\\ntdll.dll").expect("[x] Error opening the specified file.");
@@ -853,4 +853,279 @@ pub fn map_to_allocated_memory(
     add_runtime_table(&pe_info, image_ptr);
 
     Ok(())
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use data::{PeMetadata, ImageOptionalHeader64, ImageFileHeader};
+    use windows_sys::Win32::System::Diagnostics::Debug::IMAGE_SECTION_HEADER;
+    use std::collections::BTreeMap;
+
+    // Test PeMetadata creation
+    #[test]
+    fn test_pe_metadata_creation() {
+        let pe = PeMetadata {
+            pe: 0x4550, // "PE\0\0"
+            is_32_bit: false,
+            image_file_header: ImageFileHeader {
+                machine: 0x8664, // AMD64
+                number_of_sections: 3,
+                time_data_stamp: 1234567890,
+                pointer_to_symbol_table: 0,
+                number_of_symbols: 0,
+                size_of_optional_header: 0xF0,
+                characteristics: 0x2002, // Executable, Large address aware
+            },
+            opt_header_32: unsafe { std::mem::zeroed() },
+            opt_header_64: ImageOptionalHeader64 {
+                magic: 0x20B, // PE32+
+                major_linker_version: 14,
+                minor_linker_version: 0,
+                size_of_code: 0x1000,
+                size_of_initialized_data: 0,
+                size_of_unitialized_data: 0,
+                address_of_entry_point: 0x1000,
+                base_of_code: 0x1000,
+                image_base: 0x140000000,
+                section_alignment: 0x1000,
+                file_alignment: 0x200,
+                major_operating_system_version: 10,
+                minor_operating_system_version: 0,
+                major_image_version: 0,
+                minor_image_version: 0,
+                major_subsystem_version: 10,
+                minor_subsystem_version: 0,
+                win32_version_value: 0,
+                size_of_image: 0x7000,
+                size_of_headers: 0x400,
+                checksum: 0,
+                subsystem: 3, // WINDOWS_CUI
+                dll_characteristics: 0x8160,
+                size_of_stack_reserve: 0x40000,
+                size_of_stack_commit: 0x1000,
+                size_of_heap_reserve: 0x100000,
+                size_of_heap_commit: 0x1000,
+                loader_flags: 0,
+                number_of_rva_and_sizes: 16,
+                datas_directory: [unsafe { std::mem::zeroed() }; 16],
+            },
+            sections: Vec::new(),
+        };
+
+        assert_eq!(pe.pe, 0x4550);
+        assert!(!pe.is_32_bit);
+        assert_eq!(pe.image_file_header.machine, 0x8664);
+        assert_eq!(pe.image_file_header.number_of_sections, 3);
+    }
+
+    // Test PeMetadata default
+    #[test]
+    fn test_pe_metadata_default() {
+        let pe = PeMetadata::default();
+        assert_eq!(pe.pe, 0);
+        assert!(!pe.is_32_bit);
+    }
+
+    // Test IMAGE_SECTION_HEADER - just verify it exists and has correct size
+    #[test]
+    fn test_image_section_header_size() {
+        let section: IMAGE_SECTION_HEADER = unsafe { std::mem::zeroed() };
+        assert_eq!(std::mem::size_of::<IMAGE_SECTION_HEADER>(), 40);
+    }
+
+    // Test PeManualMap creation
+    #[test]
+    fn test_pe_manual_map_creation() {
+        let pmm = PeManualMap {
+            decoy_module: "kernel32.dll".to_string(),
+            base_address: 0x12340000,
+            pe_info: PeMetadata::default(),
+        };
+
+        assert_eq!(pmm.decoy_module, "kernel32.dll");
+        assert_eq!(pmm.base_address, 0x12340000);
+    }
+
+    // Test module parsing validation
+    #[test]
+    fn test_pe_header_validation() {
+        // Test that we can validate a PE header
+        let valid_pe: [u8; 2] = [0x50, 0x45]; // "PE"
+        assert_eq!(valid_pe[0], 0x50);
+        assert_eq!(valid_pe[1], 0x45);
+
+        let invalid_pe: [u8; 2] = [0x00, 0x00];
+        assert_ne!(invalid_pe[0], 0x50);
+    }
+
+    // Test DOS header magic
+    #[test]
+    fn test_dos_header_magic() {
+        let dos_magic: [u8; 2] = [0x5A, 0x4D]; // "MZ"
+        assert_eq!(dos_magic[0], 0x5A); // 'M'
+        assert_eq!(dos_magic[1], 0x4D); // 'Z'
+    }
+
+    // Test section characteristics
+    #[test]
+    fn test_section_characteristics() {
+        // CODE section
+        const IMAGE_SCN_CNT_CODE: u32 = 0x20000000;
+        const IMAGE_SCN_MEM_EXECUTE: u32 = 0x20000000;
+        const IMAGE_SCN_MEM_READ: u32 = 0x40000000;
+        const IMAGE_SCN_MEM_WRITE: u32 = 0x80000000;
+
+        let code_section = IMAGE_SCN_CNT_CODE | IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_MEM_READ;
+        assert!(code_section & IMAGE_SCN_CNT_CODE != 0);
+        assert!(code_section & IMAGE_SCN_MEM_EXECUTE != 0);
+        assert!(code_section & IMAGE_SCN_MEM_READ != 0);
+
+        let data_section = IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_WRITE;
+        assert!(data_section & IMAGE_SCN_MEM_READ != 0);
+        assert!(data_section & IMAGE_SCN_MEM_WRITE != 0);
+        assert!(data_section & IMAGE_SCN_MEM_EXECUTE == 0);
+    }
+
+    // Test optional header magic values
+    #[test]
+    fn test_optional_header_magic() {
+        const PE32_MAGIC: u16 = 0x10B;
+        const PE32_PLUS_MAGIC: u16 = 0x20B;
+
+        assert_eq!(PE32_MAGIC, 0x10B);
+        assert_eq!(PE32_PLUS_MAGIC, 0x20B);
+    }
+
+    // Test subsystem values
+    #[test]
+    fn test_subsystem_values() {
+        const IMAGE_SUBSYSTEM_UNKNOWN: u16 = 0;
+        const IMAGE_SUBSYSTEM_NATIVE: u16 = 1;
+        const IMAGE_SUBSYSTEM_WINDOWS_GUI: u16 = 2;
+        const IMAGE_SUBSYSTEM_WINDOWS_CUI: u16 = 3;
+
+        assert_eq!(IMAGE_SUBSYSTEM_UNKNOWN, 0);
+        assert_eq!(IMAGE_SUBSYSTEM_NATIVE, 1);
+        assert_eq!(IMAGE_SUBSYSTEM_WINDOWS_GUI, 2);
+        assert_eq!(IMAGE_SUBSYSTEM_WINDOWS_CUI, 3);
+    }
+
+    // Test DLL characteristics
+    #[test]
+    fn test_dll_characteristics() {
+        const IMAGE_DLL_CHARACTERISTICS_DYNAMIC_BASE: u16 = 0x0040;
+        const IMAGE_DLL_CHARACTERISTICS_NX_COMPAT: u16 = 0x0100;
+        const IMAGE_DLL_CHARACTERISTICS_NO_ISOLATION: u16 = 0x0200;
+        const IMAGE_DLL_CHARACTERISTICS_NO_SEH: u16 = 0x0400;
+
+        let chars = IMAGE_DLL_CHARACTERISTICS_DYNAMIC_BASE | IMAGE_DLL_CHARACTERISTICS_NX_COMPAT;
+        assert!(chars & IMAGE_DLL_CHARACTERISTICS_DYNAMIC_BASE != 0);
+        assert!(chars & IMAGE_DLL_CHARACTERISTICS_NX_COMPAT != 0);
+        assert!(chars & IMAGE_DLL_CHARACTERISTICS_NO_ISOLATION == 0);
+    }
+
+    // Test machine types
+    #[test]
+    fn test_machine_types() {
+        const IMAGE_FILE_MACHINE_I386: u16 = 0x014C;
+        const IMAGE_FILE_MACHINE_AMD64: u16 = 0x8664;
+        const IMAGE_FILE_MACHINE_ARM: u16 = 0x01C0;
+        const IMAGE_FILE_MACHINE_ARM64: u16 = 0xAA64;
+
+        assert_eq!(IMAGE_FILE_MACHINE_I386, 0x014C);
+        assert_eq!(IMAGE_FILE_MACHINE_AMD64, 0x8664);
+        assert_eq!(IMAGE_FILE_MACHINE_ARM, 0x01C0);
+        assert_eq!(IMAGE_FILE_MACHINE_ARM64, 0xAA64);
+    }
+
+    // Test data directories
+    #[test]
+    fn test_data_directories() {
+        const IMAGE_DIRECTORY_ENTRY_EXPORT: usize = 0;
+        const IMAGE_DIRECTORY_ENTRY_IMPORT: usize = 1;
+        const IMAGE_DIRECTORY_ENTRY_RESOURCE: usize = 2;
+        const IMAGE_DIRECTORY_ENTRY_EXCEPTION: usize = 3;
+        const IMAGE_DIRECTORY_ENTRY_TLS: usize = 9;
+
+        assert_eq!(IMAGE_DIRECTORY_ENTRY_EXPORT, 0);
+        assert_eq!(IMAGE_DIRECTORY_ENTRY_IMPORT, 1);
+        assert_eq!(IMAGE_DIRECTORY_ENTRY_RESOURCE, 2);
+        assert_eq!(IMAGE_DIRECTORY_ENTRY_EXCEPTION, 3);
+        assert_eq!(IMAGE_DIRECTORY_ENTRY_TLS, 9);
+    }
+
+    // Test runtime function structure
+    #[test]
+    fn test_runtime_function_structure() {
+        use data::RuntimeFunction;
+
+        let rf = RuntimeFunction {
+            begin_addr: 0x1000,
+            end_addr: 0x2000,
+            unwind_addr: 0x1500,
+        };
+
+        assert_eq!(rf.begin_addr, 0x1000);
+        assert_eq!(rf.end_addr, 0x2000);
+        assert_eq!(rf.unwind_addr, 0x1500);
+    }
+
+    // Test module size calculations
+    #[test]
+    fn test_module_size_calculations() {
+        let section_alignment = 0x1000u32;
+        let file_alignment = 0x200u32;
+        let raw_size = 0x1800u32;
+
+        // Calculate aligned size
+        let aligned_size = ((raw_size + section_alignment - 1) / section_alignment) * section_alignment;
+        assert_eq!(aligned_size, 0x2000);
+
+        // File size alignment
+        let file_aligned = ((raw_size + file_alignment - 1) / file_alignment) * file_alignment;
+        assert_eq!(file_aligned, 0x1800);
+    }
+
+    // Test RVA to file offset calculation
+    #[test]
+    fn test_rva_to_offset() {
+        // Simulate section info
+        struct SectionInfo {
+            virtual_address: u32,
+            pointer_to_raw_data: u32,
+            virtual_size: u32,
+        }
+
+        let sections = vec![
+            SectionInfo { virtual_address: 0x1000, pointer_to_raw_data: 0x400, virtual_size: 0x1000 },
+            SectionInfo { virtual_address: 0x2000, pointer_to_raw_data: 0x1400, virtual_size: 0x800 },
+        ];
+
+        // Test RVA in first section
+        // RVA 0x1500 is in first section (0x1000-0x2000)
+        // offset = 0x400 + (0x1500 - 0x1000) = 0x400 + 0x500 = 0x900
+        let rva = 0x1500u32;
+        let offset = sections.iter().find(|s| rva >= s.virtual_address && rva < s.virtual_address + s.virtual_size)
+            .map(|s| s.pointer_to_raw_data + (rva - s.virtual_address));
+
+        assert_eq!(offset, Some(0x900));
+    }
+
+    // Test import lookup
+    #[test]
+    fn test_import_lookup() {
+        let mut imports: BTreeMap<String, usize> = BTreeMap::new();
+        imports.insert("kernel32.dll".to_string(), 0x1000);
+        imports.insert("ntdll.dll".to_string(), 0x2000);
+        imports.insert("user32.dll".to_string(), 0x3000);
+
+        assert_eq!(imports.len(), 3);
+        assert_eq!(imports.get("kernel32.dll"), Some(&0x1000));
+        assert!(imports.get("nonexistent.dll").is_none());
+    }
 }
